@@ -473,7 +473,7 @@ items: pending.items,
 total: pending.total,
 status: "new"
 };
-client.from("fruit_orders").insert([order]).select("id").then(function(res){
+client.from("fruit_orders").insert([order]).then(function(res){
 btn.disabled = false; btn.textContent = "提交订单";
 if (res.error){
 err.textContent = "提交失败，请稍后再试（" + res.error.message + "）";
