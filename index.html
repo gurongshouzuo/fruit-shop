@@ -407,9 +407,9 @@ var on = document.querySelector("#" + rowId + " .radio-pill.on");
 return on? on.getAttribute("data-value"): null;
 }
 function bindRadioRow(rowId, onChange){
-document.querySelectorAll("#" + rowId + ".radio-pill").forEach(function(pill){
+document.querySelectorAll("#" + rowId + " .radio-pill").forEach(function(pill){
 pill.addEventListener("click", function(){
-document.querySelectorAll("#" + rowId + ".radio-pill").forEach(function(x){ x.classList.remove("on");});
+document.querySelectorAll("#" + rowId + " .radio-pill").forEach(function(x){ x.classList.remove("on");});
 pill.classList.add("on");
 if (onChange) onChange(pill.getAttribute("data-value"));
 });
