@@ -69,6 +69,8 @@
   .order .oacts{display:flex; gap:6px; margin-top:10px; flex-wrap:wrap;}
   .preview-img{max-width:180px; max-height:180px; border-radius:10px; display:block; margin-top:8px;}
   .muted{color:var(--muted); font-size:13px; line-height:1.8;}
+  .chip{display:inline-flex; align-items:center; gap:6px; background:var(--green-soft); color:var(--green-dark); border-radius:999px; padding:6px 8px 6px 12px; font-size:14px;}
+  .chip button{border:none; background:none; color:var(--red); font-size:16px; cursor:pointer; line-height:1; padding:0;}
   .login-box{max-width:420px; margin:40px auto 0;}
 </style>
 </head>
@@ -109,6 +111,7 @@
     <div class="tabs">
       <button class="tab on" id="tabProducts">商品管理</button>
       <button class="tab" id="tabOrders">订单管理 <span id="newOrderCount"></span></button>
+      <button class="tab" id="tabSettings">店铺设置</button>
     </div>
 
     <!-- 商品管理 -->
@@ -196,6 +199,41 @@
         <div id="orderList" style="margin-top:12px;"></div>
       </div>
     </div>
+
+    <!-- 店铺设置 -->
+    <div id="settingsPane" class="hidden">
+      <div class="card">
+        <h2>店铺设置</h2>
+        <p class="muted">自提地址、配送校区、配送时间和公告都在这里改，保存后顾客那边立刻生效。</p>
+        <div class="field">
+          <label>自提地址</label>
+          <input type="text" id="sPickup" placeholder="例如：天平学院门口" maxlength="40">
+        </div>
+        <div class="field">
+          <label>配送校区（点 × 删除）</label>
+          <div id="sCampusChips" style="display:flex; gap:8px; flex-wrap:wrap; margin-bottom:8px;"></div>
+          <div style="display:flex; gap:8px;">
+            <input type="text" id="sCampusInput" placeholder="输入新校区名，例如：江枫校区" maxlength="20" style="flex:1; border:1px solid #ddd2c2; border-radius:10px; padding:10px 12px; font-size:15px;">
+            <button type="button" class="btn btn-ghost" id="sCampusAdd">添加</button>
+          </div>
+        </div>
+        <div class="field">
+          <label>配送时间（点 × 删除）</label>
+          <div id="sSlotChips" style="display:flex; gap:8px; flex-wrap:wrap; margin-bottom:8px;"></div>
+          <div style="display:flex; gap:8px;">
+            <input type="text" id="sSlotInput" placeholder="例如：20:00" maxlength="10" style="flex:1; border:1px solid #ddd2c2; border-radius:10px; padding:10px 12px; font-size:15px;">
+            <button type="button" class="btn btn-ghost" id="sSlotAdd">添加</button>
+          </div>
+        </div>
+        <div class="field">
+          <label>店铺公告（显示在店铺顶部，留空则显示默认的配送信息）</label>
+          <input type="text" id="sNotice" placeholder="例如：今天金柑刚到，数量不多" maxlength="100">
+        </div>
+        <p class="err" id="settingsErr"></p>
+        <p class="ok-msg" id="settingsOk"></p>
+        <button type="button" class="btn btn-orange" id="saveSettingsBtn">保存设置</button>
+      </div>
+    </div>
   </div>
 </div>
 
@@ -222,7 +260,7 @@
     $("loginView").classList.add("hidden");
     $("adminView").classList.remove("hidden");
     $("whoText").textContent = "已登录：" + (user && user.email ? user.email : "");
-    loadProducts(); loadOrders();
+    loadProducts(); loadOrders(); loadSettings();
   }
   function showLogin(){
     $("adminView").classList.add("hidden");
@@ -248,15 +286,17 @@
   });
 
   /* ---------- 标签页 ---------- */
-  $("tabProducts").addEventListener("click", function(){
-    $("tabProducts").classList.add("on"); $("tabOrders").classList.remove("on");
-    $("productsPane").classList.remove("hidden"); $("ordersPane").classList.add("hidden");
-  });
-  $("tabOrders").addEventListener("click", function(){
-    $("tabOrders").classList.add("on"); $("tabProducts").classList.remove("on");
-    $("ordersPane").classList.remove("hidden"); $("productsPane").classList.add("hidden");
-    loadOrders();
-  });
+  function showPane(which){
+    $("tabProducts").classList.toggle("on", which === "products");
+    $("tabOrders").classList.toggle("on", which === "orders");
+    $("tabSettings").classList.toggle("on", which === "settings");
+    $("productsPane").classList.toggle("hidden", which !== "products");
+    $("ordersPane").classList.toggle("hidden", which !== "orders");
+    $("settingsPane").classList.toggle("hidden", which !== "settings");
+  }
+  $("tabProducts").addEventListener("click", function(){ showPane("products"); });
+  $("tabOrders").addEventListener("click", function(){ showPane("orders"); loadOrders(); });
+  $("tabSettings").addEventListener("click", function(){ showPane("settings"); });
   $("refreshOrdersBtn").addEventListener("click", loadOrders);
 
   /* ---------- 商品 ---------- */
@@ -410,6 +450,102 @@
     });
   });
 
+  /* ---------- 店铺设置 ---------- */
+  var SETTINGS_KEYS = ["pickup_address", "delivery_campuses", "delivery_slots", "shop_notice"];
+  var settingsState = {
+    pickup_address: "天平学院门口",
+    delivery_campuses: ["天平学院", "江枫校区"],
+    delivery_slots: ["12:00", "17:40", "19:30"],
+    shop_notice: ""
+  };
+
+  function renderChips(containerId, values, onRemove){
+    var box = $(containerId);
+    box.innerHTML = "";
+    if (!values.length){ box.innerHTML = "<span class='muted'>暂无，可在下面添加</span>"; return; }
+    values.forEach(function(v, i){
+      var chip = document.createElement("span");
+      chip.className = "chip";
+      chip.textContent = v;
+      var x = document.createElement("button");
+      x.type = "button";
+      x.textContent = "×";
+      x.setAttribute("aria-label", "删除 " + v);
+      x.addEventListener("click", function(){ onRemove(i); });
+      chip.appendChild(x);
+      box.appendChild(chip);
+    });
+  }
+  function renderSettingsForm(){
+    $("sPickup").value = settingsState.pickup_address || "";
+    $("sNotice").value = settingsState.shop_notice || "";
+    renderChips("sCampusChips", settingsState.delivery_campuses, function(i){ settingsState.delivery_campuses.splice(i, 1); renderSettingsForm(); });
+    renderChips("sSlotChips", settingsState.delivery_slots, function(i){ settingsState.delivery_slots.splice(i, 1); renderSettingsForm(); });
+  }
+  function loadSettings(){
+    client.from("fruit_settings").select("key,value").then(function(res){
+      if (res.error){ $("settingsErr").textContent = "设置加载失败：" + res.error.message; renderSettingsForm(); return; }
+      (res.data || []).forEach(function(row){
+        if (!row || !row.key) return;
+        if (row.key === "pickup_address" && typeof row.value === "string") settingsState.pickup_address = row.value;
+        if (row.key === "delivery_campuses" && Array.isArray(row.value)) settingsState.delivery_campuses = row.value;
+        if (row.key === "delivery_slots" && Array.isArray(row.value)) settingsState.delivery_slots = row.value;
+        if (row.key === "shop_notice" && typeof row.value === "string") settingsState.shop_notice = row.value;
+      });
+      DELIVERY_LABEL.pickup = "自提（" + settingsState.pickup_address + "）";
+      renderSettingsForm();
+      loadOrders();
+    });
+  }
+  $("sCampusAdd").addEventListener("click", function(){
+    var v = $("sCampusInput").value.trim();
+    if (!v) return;
+    if (settingsState.delivery_campuses.indexOf(v) === -1) settingsState.delivery_campuses.push(v);
+    $("sCampusInput").value = "";
+    renderSettingsForm();
+  });
+  $("sSlotAdd").addEventListener("click", function(){
+    var v = $("sSlotInput").value.trim();
+    if (!v) return;
+    if (settingsState.delivery_slots.indexOf(v) === -1) settingsState.delivery_slots.push(v);
+    $("sSlotInput").value = "";
+    renderSettingsForm();
+  });
+  $("saveSettingsBtn").addEventListener("click", function(){
+    var err = $("settingsErr"), ok = $("settingsOk");
+    err.textContent = ""; ok.textContent = "";
+    var pickup = $("sPickup").value.trim();
+    if (!pickup){ err.textContent = "请填写自提地址"; $("sPickup").focus(); return; }
+    if (!settingsState.delivery_campuses.length){ err.textContent = "至少保留一个配送校区"; return; }
+    if (!settingsState.delivery_slots.length){ err.textContent = "至少保留一个配送时间"; return; }
+    var values = {
+      pickup_address: pickup,
+      delivery_campuses: settingsState.delivery_campuses.slice(),
+      delivery_slots: settingsState.delivery_slots.slice(),
+      shop_notice: $("sNotice").value.trim()
+    };
+    var btn = $("saveSettingsBtn"); btn.disabled = true; btn.textContent = "正在保存…";
+    var now = new Date().toISOString();
+    var jobs = SETTINGS_KEYS.map(function(k){
+      return client.from("fruit_settings").upsert({ key: k, value: values[k], updated_at: now }).then(function(res){
+        if (res.error) throw new Error(res.error.message);
+      });
+    });
+    Promise.all(jobs).then(function(){
+      btn.disabled = false; btn.textContent = "保存设置";
+      settingsState.pickup_address = values.pickup_address;
+      settingsState.delivery_campuses = values.delivery_campuses.slice();
+      settingsState.delivery_slots = values.delivery_slots.slice();
+      settingsState.shop_notice = values.shop_notice;
+      DELIVERY_LABEL.pickup = "自提（" + values.pickup_address + "）";
+      ok.textContent = "已保存 ✓ 顾客那边立刻生效";
+    }).catch(function(e){
+      btn.disabled = false; btn.textContent = "保存设置";
+      err.textContent = "保存失败：" + (e.message || "请重试");
+    });
+  });
+  renderSettingsForm();
+
   /* ---------- 订单 ---------- */
   function loadOrders(){
     client.from("fruit_orders").select("*").order("created_at", { ascending: false }).limit(100).then(function(res){
@@ -436,7 +572,7 @@
           '<div class="oh"><span class="ono">' + esc(o.order_no) + ' <span class="pill status-' + esc(o.status) + '">' + esc(STATUS_LABEL[o.status] || o.status) + '</span></span>' +
           '<span class="ot">' + esc(fmtTime(o.created_at)) + '</span></div>' +
           '<div class="ol">姓名：' + esc(o.customer_name) + ' · 电话：' + esc(o.phone) + '<br>' +
-          '配送：' + esc(DELIVERY_LABEL[o.delivery_type] || o.delivery_type) + (o.building ? ' · ' + esc(o.building) : '') + ' · 时间：' + esc(o.delivery_slot || "") + '<br>' +
+          '配送：' + esc(DELIVERY_LABEL[o.delivery_type] || o.delivery_type) + (o.delivery_type === "delivery" ? (o.campus ? ' · ' + esc(o.campus) : '') + (o.building ? ' · ' + esc(o.building) : '') : '') + ' · 时间：' + esc(o.delivery_slot || "") + '<br>' +
           '付款：' + esc(PAY_LABEL[o.payment_method] || o.payment_method) + ' · 合计：<strong>' + money(o.total) + '</strong></div>' +
           '<div class="oi">' + itemsHtml + '</div>' +
           (acts ? '<div class="oacts">' + acts + '</div>' : '') +

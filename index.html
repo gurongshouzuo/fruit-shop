@@ -109,7 +109,7 @@ footer{padding:22px 16px 8px; text-align:center; color:var(--muted); font-size:1
 <h1>🍊 古榕水果甄选小铺</h1>
 <p class="tagline">当天新鲜 · 甄选好果 · 天平学院门口自提</p>
 </header>
-<div class="notice">每天三趟配送：12:00 / 17:40 / 19:30 · 自提点在天平学院门口 · 支持微信转账、货到付款</div>
+<div class="notice" id="noticeBar">每天三趟配送：12:00 / 17:40 / 19:30 · 自提点在天平学院门口 · 支持微信转账、货到付款</div>
 <main>
 <section id="featuredSec" class="hidden">
 <h2>🌟 今日推荐</h2>
@@ -181,6 +181,13 @@ footer{padding:22px 16px 8px; text-align:center; color:var(--muted); font-size:1
 <div class="field hidden" id="buildingField">
 <label>宿舍楼号 <span class="req">*</span></label>
 <input type="text" id="fBuilding" placeholder="例如：3号楼 502" maxlength="30">
+</div>
+<div class="field hidden" id="campusField">
+<label>校区 <span class="req">*</span></label>
+<div class="radio-row" id="campusRow">
+<div class="radio-pill on" data-value="天平学院">天平学院</div>
+<div class="radio-pill" data-value="江枫校区">江枫校区</div>
+</div>
 </div>
 <div class="field">
 <label>配送时间 <span class="req">*</span></label>
@@ -408,18 +415,81 @@ if (onChange) onChange(pill.getAttribute("data-value"));
 });
 });
 }
-bindRadioRow("deliveryTypeRow", function(v){
-$("buildingField").classList.toggle("hidden", v!== "delivery");
-});
-bindRadioRow("slotRow");
-bindRadioRow("payRow");
+/* ---- 店铺设置（自提地址、配送校区、配送时间、公告；管理后台可改） ---- */
+var SETTINGS = {
+  pickup_address: "天平学院门口",
+  delivery_campuses: ["天平学院", "江枫校区"],
+  delivery_slots: ["12:00", "17:40", "19:30"],
+  shop_notice: ""
+};
+
+function buildRadioRow(rowId, options, selectedValue){
+  var row = $(rowId);
+  if (!row) return;
+  var sel = selectedValue;
+  if (sel == null){
+    var cur = row.querySelector(".radio-pill.on");
+    if (cur) sel = cur.getAttribute("data-value");
+  }
+  row.innerHTML = options.map(function(opt, i){
+    var on = (sel != null ? opt.value === sel : i === 0);
+    return '<div class="radio-pill' + (on ? " on" : "") + '" data-value="' + esc(opt.value) + '">' + esc(opt.label) + "</div>";
+  }).join("");
+}
+
+function syncDeliveryFields(){
+  var isDel = pickValue("deliveryTypeRow") === "delivery";
+  $("campusField").classList.toggle("hidden", !isDel);
+  $("buildingField").classList.toggle("hidden", !isDel);
+}
+
+function buildCheckoutRows(){
+  buildRadioRow("deliveryTypeRow", [
+    { value: "pickup", label: "自提 · " + SETTINGS.pickup_address },
+    { value: "delivery", label: "送到宿舍楼下" }
+  ]);
+  buildRadioRow("campusRow", SETTINGS.delivery_campuses.map(function(c){ return { value: c, label: c }; }));
+  buildRadioRow("slotRow", SETTINGS.delivery_slots.map(function(s){ return { value: s, label: s }; }));
+  bindRadioRow("deliveryTypeRow", function(v){ syncDeliveryFields(); });
+  bindRadioRow("campusRow");
+  bindRadioRow("slotRow");
+  bindRadioRow("payRow");
+  syncDeliveryFields();
+}
+
+function applySettings(){
+  DELIVERY_LABEL.pickup = "自提（" + SETTINGS.pickup_address + "）";
+  var notice = (SETTINGS.shop_notice && SETTINGS.shop_notice.trim())
+    ? SETTINGS.shop_notice.trim()
+    : ("每天三趟配送：" + SETTINGS.delivery_slots.join(" / ") + " · 自提点在" + SETTINGS.pickup_address + " · 支持微信转账、货到付款");
+  $("noticeBar").textContent = notice;
+  buildCheckoutRows();
+}
+
+function loadSettings(){
+  client.from("fruit_settings").select("key,value").then(function(res){
+    if (res.error || !res.data) return;
+    res.data.forEach(function(row){
+      if (!row || !row.key) return;
+      if (row.key === "pickup_address" && typeof row.value === "string" && row.value.trim()) SETTINGS.pickup_address = row.value.trim();
+      if (row.key === "delivery_campuses" && Array.isArray(row.value)) SETTINGS.delivery_campuses = row.value.filter(function(v){ return typeof v === "string" && v.trim(); });
+      if (row.key === "delivery_slots" && Array.isArray(row.value)) SETTINGS.delivery_slots = row.value.filter(function(v){ return typeof v === "string" && v.trim(); });
+      if (row.key === "shop_notice" && typeof row.value === "string") SETTINGS.shop_notice = row.value;
+    });
+    if (!SETTINGS.delivery_campuses.length) SETTINGS.delivery_campuses = ["天平学院", "江枫校区"];
+    if (!SETTINGS.delivery_slots.length) SETTINGS.delivery_slots = ["12:00", "17:40", "19:30"];
+    applySettings();
+  });
+}
+
+buildCheckoutRows();
 
 function orderSummaryText(o){
 var lines = ["订单 " + o.order_no];
 o.items.forEach(function(it){ lines.push(it.name + " " + money(it.price) + "/" + (it.unit || "份") + " ×" + it.qty);});
 lines.push("合计：" + money(o.total));
 lines.push("姓名：" + o.customer_name + " 电话：" + o.phone);
-lines.push("配送：" + DELIVERY_LABEL[o.delivery_type] + (o.delivery_type === "delivery" && o.building? " · " + o.building: ""));
+lines.push("配送：" + DELIVERY_LABEL[o.delivery_type] + (o.delivery_type === "delivery" ? (o.campus ? " · " + o.campus : "") + (o.building ? " · " + o.building : "") : ""));
 lines.push("时间：" + o.delivery_slot);
 lines.push("付款：" + PAY_LABEL[o.payment_method]);
 return lines.join("\n");
@@ -448,6 +518,7 @@ var err = $("formErr");
 var name = $("fName").value.trim();
 var phone = $("fPhone").value.trim();
 var deliveryType = pickValue("deliveryTypeRow");
+var campus = pickValue("campusRow");
 var building = $("fBuilding").value.trim();
 var slot = pickValue("slotRow");
 var pay = pickValue("payRow");
@@ -466,6 +537,7 @@ order_no: orderNo,
 customer_name: name,
 phone: phone,
 building: deliveryType === "delivery"? building: null,
+campus: deliveryType === "delivery"? (campus || SETTINGS.delivery_campuses[0] || null): null,
 delivery_slot: slot || "12:00",
 delivery_type: deliveryType || "pickup",
 payment_method: pay || "wechat",
@@ -485,8 +557,8 @@ $("successOrderNo").textContent = "订单号：" + orderNo;
 $("successSummary").innerHTML = orderSummaryHtml(order) +
 "<div style='margin-top:10px;font-size:13px;color:var(--muted);line-height:1.8;'>" +
 "姓名：" + esc(name) + " · 电话：" + esc(phone) + "<br>" +
-"配送：" + esc(DELIVERY_LABEL[deliveryType]) + (deliveryType === "delivery"? " · " + esc(building): "") + "<br>" +
-"时间：" + esc(slot) + " · 付款：" + esc(PAY_LABEL[pay]) + "</div>";
+"配送：" + esc(DELIVERY_LABEL[order.delivery_type]) + (order.delivery_type === "delivery" ? (order.campus ? " · " + esc(order.campus) : "") + (order.building ? " · " + esc(order.building) : "") : "") + "<br>" +
+"时间：" + esc(order.delivery_slot) + " · 付款：" + esc(PAY_LABEL[order.payment_method]) + "</div>";
 $("copyTip").textContent = "";
 openSheet("successSheet");
 });
@@ -534,6 +606,7 @@ renderCartBar();
 });
 }
 renderCartBar();
+loadSettings();
 loadProducts();
 })();
 </script>
