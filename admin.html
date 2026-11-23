@@ -247,7 +247,7 @@
   var client = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
   var DELIVERY_LABEL = { pickup: "自提（天平学院门口）", delivery: "送到宿舍楼下" };
-  var PAY_LABEL = { wechat: "微信转账", cod: "货到付款" };
+  var PAY_LABEL = { wechat: "微信转账" };
   var STATUS_LABEL = { new: "新订单", confirmed: "已确认", done: "已完成", cancelled: "已取消" };
 
   function $(id){ return document.getElementById(id); }

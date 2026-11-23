@@ -109,7 +109,7 @@ footer{padding:22px 16px 8px; text-align:center; color:var(--muted); font-size:1
 <h1>🍊 古榕水果甄选小铺</h1>
 <p class="tagline">当天新鲜 · 甄选好果 · 天平学院门口自提</p>
 </header>
-<div class="notice" id="noticeBar">每天三趟配送：12:00 / 17:40 / 19:30 · 自提点在天平学院门口 · 支持微信转账、货到付款</div>
+<div class="notice" id="noticeBar">每天三趟配送：12:00 / 17:40 / 19:30 · 自提点在天平学院门口 · 只支持微信转账</div>
 <main>
 <section id="featuredSec" class="hidden">
 <h2>🌟 今日推荐</h2>
@@ -201,7 +201,6 @@ footer{padding:22px 16px 8px; text-align:center; color:var(--muted); font-size:1
 <label>付款方式 <span class="req">*</span></label>
 <div class="radio-row" id="payRow">
 <div class="radio-pill on" data-value="wechat">微信转账</div>
-<div class="radio-pill" data-value="cod">货到付款</div>
 </div>
 </div>
 <p class="err" id="formErr"></p>
@@ -232,7 +231,7 @@ var SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYm
 var client = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
 var DELIVERY_LABEL = { pickup: "自提（天平学院门口）", delivery: "送到宿舍楼下"};
-var PAY_LABEL = { wechat: "微信转账", cod: "货到付款"};
+var PAY_LABEL = { wechat: "微信转账"};
 
 var products = [];
 var cart = {};
@@ -461,7 +460,7 @@ function applySettings(){
   DELIVERY_LABEL.pickup = "自提（" + SETTINGS.pickup_address + "）";
   var notice = (SETTINGS.shop_notice && SETTINGS.shop_notice.trim())
     ? SETTINGS.shop_notice.trim()
-    : ("每天三趟配送：" + SETTINGS.delivery_slots.join(" / ") + " · 自提点在" + SETTINGS.pickup_address + " · 支持微信转账、货到付款");
+    : ("每天三趟配送：" + SETTINGS.delivery_slots.join(" / ") + " · 自提点在" + SETTINGS.pickup_address + " · 只支持微信转账");
   $("noticeBar").textContent = notice;
   buildCheckoutRows();
 }
