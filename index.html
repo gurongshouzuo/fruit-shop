@@ -396,7 +396,7 @@ renderCartSheet(); openSheet("cartSheet");
 
 /* ---- 下单 ---- */
 function pickValue(rowId){
-var on = document.querySelector("#" + rowId + ".radio-pill.on");
+var on = document.querySelector("#" + rowId + " .radio-pill.on");
 return on? on.getAttribute("data-value"): null;
 }
 function bindRadioRow(rowId, onChange){
@@ -466,9 +466,9 @@ order_no: orderNo,
 customer_name: name,
 phone: phone,
 building: deliveryType === "delivery"? building: null,
-delivery_slot: slot,
-delivery_type: deliveryType,
-payment_method: pay,
+delivery_slot: slot || "12:00",
+delivery_type: deliveryType || "pickup",
+payment_method: pay || "wechat",
 items: pending.items,
 total: pending.total,
 status: "new"
