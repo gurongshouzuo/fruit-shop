@@ -109,7 +109,7 @@ footer{padding:24px 16px 8px; text-align:center; color:var(--muted); font-size:1
 .success-wrap h3{margin:12px 0 4px; font-size:20px; font-weight:800;}
 .success-wrap p{color:var(--muted); font-size:14px; line-height:1.8; margin:6px 0;}
 .order-no{font-size:20px; font-weight:800; letter-spacing:1px; color:var(--green-dark); background:var(--green-soft); border-radius:12px; padding:12px; margin:16px 0;}
-.hidden{display:none!important;}
+.hidden{display:none!important;}/* 前台轻动效包 */html,body{overflow-x:hidden;}header{position:sticky;top:0;z-index:50;transition:box-shadow .25s ease;}header.stuck{box-shadow:0 10px 24px rgba(20,83,42,.28);}.sk-card{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);overflow:hidden;box-shadow:var(--shadow-sm);}.sk-img{aspect-ratio:1/1;background:#eee7d8;position:relative;overflow:hidden;}.sk-line{height:14px;border-radius:7px;background:#eee7d8;margin:12px 14px 0;position:relative;overflow:hidden;}.sk-line.short{width:55%;margin-bottom:14px;}.sk-img::after,.sk-line::after{content:"";position:absolute;inset:0;background:linear-gradient(100deg,transparent 20%,rgba(255,255,255,.75) 50%,transparent 80%);transform:translateX(-100%);animation:sk-sweep 1.6s ease-in-out infinite;}@keyframes sk-sweep{to{transform:translateX(100%);}}.card.reveal{opacity:0;transform:translateY(30px);transition:opacity .6s ease,transform .6s ease,box-shadow .18s ease;}.card.reveal.in{opacity:1;transform:none;}@media (hover:hover){.card.reveal.in:hover{transform:translateY(-3px);box-shadow:var(--shadow-md);}}img.pimg{opacity:0;transition:opacity .3s ease;}img.pimg.loaded{opacity:1;}.cart-badge{display:inline-flex;align-items:center;justify-content:center;min-width:22px;height:22px;padding:0 6px;border-radius:999px;background:var(--orange);color:#fff;font-size:12px;font-weight:800;margin-left:6px;vertical-align:middle;}.cart-badge.bump{animation:badge-bump .3s ease;}@keyframes badge-bump{0%{transform:scale(1);}40%{transform:scale(1.45);}100%{transform:scale(1);}}#toast{position:fixed;left:50%;bottom:96px;transform:translate(-50%,12px);z-index:80;background:rgba(30,25,20,.92);color:#fff;font-size:14px;font-weight:700;padding:10px 18px;border-radius:999px;opacity:0;pointer-events:none;transition:opacity .25s ease,transform .25s ease;white-space:nowrap;max-width:92vw;}#toast.show{opacity:1;transform:translate(-50%,0);}.stepper .qty-num{display:inline-block;animation:qty-pop .25s ease;}@keyframes qty-pop{0%{transform:scale(1);}50%{transform:scale(1.35);}100%{transform:scale(1);}}.overlay{transition:opacity .4s ease;opacity:0;}.overlay.open{opacity:1;}.sheet{display:block;visibility:hidden;transform:translateY(102%);transition:transform .4s ease,visibility .4s ease;}.sheet.open{visibility:visible;transform:translateY(0);}@media (prefers-reduced-motion: reduce){*,*::before,*::after{animation:none!important;transition:none!important;}.card.reveal{opacity:1!important;transform:none!important;}img.pimg{opacity:1!important;}.sk-img::after,.sk-line::after{display:none;}.sheet{transform:none!important;}}
 </style>
 </head>
 <body>
@@ -136,11 +136,11 @@ footer{padding:24px 16px 8px; text-align:center; color:var(--muted); font-size:1
 </footer>
 </div>
 
-<!-- 底部购物车栏 -->
+<div id="toast" role="status" aria-live="polite"></div><!-- 底部购物车栏 -->
 <div id="cartBar">
 <div class="inner">
 <div class="sum" id="cartBarSum">
-<div class="count" id="cartCount">购物车还是空的</div>
+<div class="count" id="cartCount">购物车还是空的<span class="cart-badge hidden" id="cartBadge">0</span></div>
 <div class="total" id="cartTotal"></div>
 </div>
 <button class="btn btn-orange" id="checkoutBtn" disabled>去结算</button>
@@ -279,12 +279,12 @@ fSec.classList.add("hidden");
 $("featuredList").innerHTML = "";
 }
 $("productGrid").innerHTML = products.map(function(p){ return cardHtml(p, false);}).join("");
-bindCards();
+bindCards(); observeReveals(); fadeProductImages();
 }
 
 function cardHtml(p, isFeatured){
 var soldOut = p.status === "sold_out";
-var cls = "card" + (soldOut? " soldout": "");
+var cls = "card reveal" + (soldOut? " soldout": "");
 var html = '<div class="' + cls + '" data-id="' + esc(p.id) + '">';
 if (soldOut) html += '<span class="badge-soldout">已售罄</span>';
 else if (isFeatured) html += '<span class="badge-featured">推荐</span>';
@@ -314,12 +314,12 @@ openDetail(card.getAttribute("data-id"));
 });
 }
 
-function renderCartBar(){
+function observeReveals(){var cards=document.querySelectorAll("#featuredList .card.reveal, #productGrid .card.reveal");cards.forEach(function(card){var idx=Array.prototype.indexOf.call(card.parentNode.children,card);card.style.transitionDelay=Math.min(idx,7)*70+"ms";});if(!("IntersectionObserver" in window)){cards.forEach(function(c){c.classList.add("in");c.style.transitionDelay="0ms";});return;}var io=new IntersectionObserver(function(entries){entries.forEach(function(en){if(en.isIntersecting){var el=en.target;el.classList.add("in");io.unobserve(el);var d=parseInt(el.style.transitionDelay||"0",10)||0;setTimeout(function(){el.style.transitionDelay="0ms";el.classList.remove("reveal");el.classList.remove("in");},700+d);}});},{threshold:0.12});cards.forEach(function(c){io.observe(c);});}function fadeProductImages(){document.querySelectorAll("img.pimg").forEach(function(im){if(im.complete&&im.naturalWidth>0){im.classList.add("loaded");}else{im.addEventListener("load",function(){im.classList.add("loaded");});}});setTimeout(function(){document.querySelectorAll("img.pimg").forEach(function(im){im.classList.add("loaded");});},1500);}var toastTimer=null;function showToast(msg){var t=$("toast");if(!t)return;t.textContent=msg;t.classList.add("show");if(toastTimer)clearTimeout(toastTimer);toastTimer=setTimeout(function(){t.classList.remove("show");},2000);}function renderCartBar(){
 var n = cartCount();
 var t = cartTotal();
 $("cartCount").textContent = n === 0? "购物车还是空的": "已选 " + n + " 件商品";
 $("cartTotal").innerHTML = n === 0? "": "合计 " + money(t);
-$("checkoutBtn").disabled = n === 0;
+var badge = $("cartBadge"); if (badge){ badge.textContent = n; badge.classList.toggle("hidden", n === 0); } $("checkoutBtn").disabled = n === 0;
 }
 
 function addToCart(id, qty){
@@ -327,7 +327,7 @@ var p = productById(id);
 if (!p || p.status === "sold_out") return;
 cart[id] = (cart[id] || 0) + qty;
 saveCart(); renderCartBar();
-var btn = document.querySelector('[data-add="' + id + '"]');
+var badge = $("cartBadge"); if (badge){ badge.classList.remove("bump"); void badge.offsetWidth; badge.classList.add("bump"); } showToast("已加入购物车"); var btn = document.querySelector('[data-add="' + id + '"]');
 if (btn){ var old = btn.textContent; btn.textContent = "已加入 ✓"; setTimeout(function(){ btn.textContent = old;}, 900);}
 }
 function setQty(id, qty){
@@ -345,7 +345,7 @@ var p = e.product;
 return '<div class="cart-item">' +
 (p.image_url? '<img src="' + esc(p.image_url) + '" alt="">': '<div style="width:56px;height:56px;border-radius:10px;background:#f5efe6;display:flex;align-items:center;justify-content:center;font-size:26px;">🍊</div>') +
 '<div class="ci-info"><div class="ci-name">' + esc(p.name) + '</div><div class="ci-price">' + money(p.price) + '/' + esc(p.unit || "份") + '</div></div>' +
-'<div class="stepper"><button data-dec="' + esc(p.id) + '">−</button><span>' + e.qty + '</span><button data-inc="' + esc(p.id) + '">＋</button></div>' +
+'<div class="stepper"><button data-dec="' + esc(p.id) + '">−</button><span class="qty-num">' + e.qty + '</span><button data-inc="' + esc(p.id) + '">＋</button></div>' +
 '</div>';
 }).join("");
 }
@@ -395,13 +395,13 @@ meta.push("单位：" + esc(p.unit || "份"));
 html += '<div class="meta">' + meta.join(" &nbsp;·&nbsp; ") + '</div>';
 if (p.description) html += '<p class="desc">' + esc(p.description) + '</p>';
 html += '<div class="modal-buy"><span class="price">' + money(p.price) + '<small style="font-size:13px;color:var(--muted);font-weight:400;">/' + esc(p.unit || "份") + '</small></span>';
-html += '<span class="stepper"><button id="dDec">−</button><span id="dQty">1</span><button id="dInc">＋</button></span></div>';
+html += '<span class="stepper"><button id="dDec">−</button><span id="dQty" class="qty-num">1</span><button id="dInc">＋</button></span></div>';
 html += '<button class="btn btn-orange" id="dAdd" style="width:100%;margin-top:14px;"' + (soldOut? " disabled": "") + '>' + (soldOut? "已售罄": "加入购物车") + '</button></div>';
 $("detailContent").innerHTML = html;
 $("detailOverlay").classList.add("open");
 $("detailModal").classList.add("open");
-$("dDec").addEventListener("click", function(){ if (detailQty > 1){ detailQty--; $("dQty").textContent = detailQty;}});
-$("dInc").addEventListener("click", function(){ detailQty++; $("dQty").textContent = detailQty;});
+$("dDec").addEventListener("click", function(){ if (detailQty > 1){ detailQty--; var q = $("dQty"); q.textContent = detailQty; q.classList.remove("qty-num"); void q.offsetWidth; q.classList.add("qty-num"); }});
+$("dInc").addEventListener("click", function(){ detailQty++; var q = $("dQty"); q.textContent = detailQty; q.classList.remove("qty-num"); void q.offsetWidth; q.classList.add("qty-num"); });
 $("dAdd").addEventListener("click", function(){
 addToCart(detailId, detailQty);
 closeAll();
@@ -598,10 +598,10 @@ $("backShopBtn").addEventListener("click", function(){ closeAll();});
 /* ---- 加载商品 ---- */
 function loadProducts(){
 var box = $("stateBox");
-box.innerHTML = '<div class="state-box"><span class="big">🍊</span>正在加载新鲜水果…</div>';
+box.innerHTML = ""; var sk = ""; for (var i = 0; i < 4; i++) sk += '<div class="sk-card" aria-hidden="true"><div class="sk-img"></div><div class="sk-line"></div><div class="sk-line short"></div></div>'; $("productGrid").innerHTML = sk; $("featuredSec").classList.add("hidden"); $("featuredList").innerHTML = "";
 client.from("products").select("*").order("sort_order", { ascending: true}).order("created_at", { ascending: true}).then(function(res){
 if (res.error){
-box.innerHTML = '<div class="state-box"><span class="big">😕</span>商品加载失败，请检查网络后重试<div style="margin-top:12px;"><button class="btn btn-orange" onclick="location.reload()">重新加载</button></div></div>';
+$("productGrid").innerHTML = ""; box.innerHTML = '<div class="state-box"><span class="big">😕</span>商品加载失败，请检查网络后重试<div style="margin-top:12px;"><button class="btn btn-orange" onclick="location.reload()">重新加载</button></div></div>';
 return;
 }
 products = res.data || [];
@@ -615,7 +615,7 @@ renderCartBar();
 }
 renderCartBar();
 loadSettings();
-loadProducts();
+window.addEventListener("scroll", function(){ var h = document.querySelector("header"); if (h) h.classList.toggle("stuck", window.scrollY > 8); }, { passive: true }); loadProducts();
 })();
 </script>
 </body>
