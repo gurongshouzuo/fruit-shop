@@ -457,7 +457,7 @@ function buildCheckoutRows(){
     { value: "delivery", label: "送到宿舍楼下" }
   ]);
   buildRadioRow("campusRow", SETTINGS.delivery_campuses.map(function(c){ return { value: c, label: c }; }));
-  buildRadioRow("slotRow", SETTINGS.delivery_slots.map(function(s){ return { value: s, label: s }; }));
+  buildRadioRow("slotRow", SETTINGS.delivery_slots.map(function(s){ return { value: s, label: (function(){ var n=new Date(), d=new Date(n); if(n.getHours()*60+n.getMinutes()>=1170){ d.setDate(d.getDate()+1); } return (d.getMonth()+1)+"月"+d.getDate()+"日 "+s; })() }; }));
   bindRadioRow("deliveryTypeRow", function(v){ syncDeliveryFields(); });
   bindRadioRow("campusRow");
   bindRadioRow("slotRow");
